@@ -1,4 +1,4 @@
-// 1. 辞書データ
+// 1. 辞書データ (変更なし)
 const dictionaryData = {
     "climax": { "keywords": ["ここで決める", "ここだ", "今だ", "チャンス"], "responses": ["いけえええ！", "最高のタイミング！", "叩き込め！"] },
     "starting": { "keywords": ["さあ行こう", "始めて行きますか", "行こうか"], "responses": ["よし、気合入れていこうぜ！", "いよいよだね！"] },
@@ -27,34 +27,37 @@ function postMessage(name, text, type = "ai") {
     `;
 
     chatFlow.appendChild(msgDiv);
-    chatFlow.scrollTop = chatFlow.scrollHeight; // 自動スクロール
+    // スムーズなスクロール
+    chatFlow.parentElement.scrollTo({ top: chatFlow.scrollHeight, behavior: 'smooth' });
 }
 
 // 3. 音声認識の本体
 let recognition;
+let isStarted = false; // 二重起動防止
 
 window.initCompanion = function() {
-    // 画面の「開始ボタン」を消す
+    if (isStarted) return; 
+    isStarted = true;
+
     const overlay = document.getElementById('start-overlay');
     if (overlay) overlay.style.display = 'none';
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-        alert("このブラウザは音声認識に対応していません。PCのChromeで試してください。");
+        alert("お使いのブラウザは音声認識に対応していません。PCのChromeかSafariをお試しください。");
         return;
     }
 
     recognition = new SpeechRecognition();
     recognition.lang = 'ja-JP';
-    recognition.continuous = true; // 連続認識
+    recognition.continuous = true;
     recognition.interimResults = false;
 
-    // 音声を拾った時の処理
+    // 音声を認識した時
     recognition.onresult = (event) => {
         const transcript = event.results[event.results.length - 1][0].transcript.trim();
         postMessage("YOU", transcript, "user");
 
-        // 辞書チェック
         for (let key in dictionaryData) {
             if (dictionaryData[key].keywords.some(kw => transcript.includes(kw))) {
                 const resList = dictionaryData[key].responses;
@@ -69,16 +72,30 @@ window.initCompanion = function() {
         }
     };
 
-    // 止まったら自動再起動
-    recognition.onend = () => {
-        recognition.start();
+    // 重要：エラーハンドリング（これが無いと止まったままになります）
+    recognition.onerror = (event) => {
+        console.error("Speech Recognition Error:", event.error);
+        if (event.error === 'not-allowed') {
+            postMessage("SYSTEM", "マイクの許可が必要です。URL横の鍵マークを確認してください。", "ai");
+        }
     };
 
-    // 起動
+    // 重要：安全な再起動
+    recognition.onend = () => {
+        if (isStarted) {
+            console.log("Recognition ended, restarting...");
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error("Restart failed:", e);
+            }
+        }
+    };
+
     try {
         recognition.start();
-        postMessage("SYSTEM", "音声認識を開始しました。マイクに向かって話してください。", "ai");
+        postMessage("SYSTEM", "音声認識アクティブ：お話しください", "ai");
     } catch (e) {
-        console.error("起動エラー:", e);
+        console.error("Start failed:", e);
     }
 };
