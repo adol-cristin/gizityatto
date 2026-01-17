@@ -1,3 +1,4 @@
+// 1. 拡張版辞書データ
 const dictionaryData = {
     "climax": {
         "keywords": ["ここで決める", "ここだ", "これで決める", "行くぜ", "今だ", "チャンス"],
@@ -43,6 +44,7 @@ const dictionaryData = {
 
 const names = ["♛ Empress Luna", "✦ Golden Duke", "✧ Madam Diamond"];
 
+// 2. メッセージ表示関数
 function postMessage(name, text, type = "ai") {
     const chatFlow = document.getElementById('chat-flow');
     const chatWindow = document.getElementById('chat-window');
@@ -61,15 +63,92 @@ function postMessage(name, text, type = "ai") {
     `;
 
     chatFlow.appendChild(msgDiv);
-    
-    // スクロール処理
+
+    // スクロールを一番下へ（少し遅延させてレンダリング完了を待つ）
     setTimeout(() => {
-        chatWindow.scrollTop = chatWindow.scrollHeight;
-    }, 50);
+        chatWindow.scrollTo({
+            top: chatWindow.scrollHeight,
+            behavior: 'smooth'
+        });
+    }, 100);
 }
 
+// 3. 音声認識の本体
 let recognition;
 let isStarted = false;
+
+window.initCompanion = function() {
+    if (isStarted) return;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("音声認識未対応です。Chromeでお試しください。");
+        return;
+    }
+
+    isStarted = true;
+
+    // オーバーレイを非表示にする
+    const overlay = document.getElementById('start-overlay');
+    if (overlay) overlay.style.display = 'none';
+
+    recognition = new SpeechRecognition();
+    recognition.lang = 'ja-JP';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[event.results.length - 1][0].transcript.trim();
+        postMessage("YOU", transcript, "user");
+
+        let found = false;
+        for (let key in dictionaryData) {
+            if (dictionaryData[key].keywords.some(kw => transcript.includes(kw))) {
+                const resList = dictionaryData[key].responses;
+                const reply = resList[Math.floor(Math.random() * resList.length)];
+                
+                setTimeout(() => {
+                    const charName = names[Math.floor(Math.random() * names.length)];
+                    postMessage(charName, reply, "ai");
+                }, 600);
+                found = true;
+                break;
+            }
+        }
+    };
+
+    recognition.onerror = (event) => {
+        console.error("Recognition error:", event.error);
+    };
+
+    recognition.onend = () => {
+        // 途切れた場合に自動再開
+        if (isStarted) {
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error("Restart failed", e);
+            }
+        }
+    };
+
+    try {
+        recognition.start();
+        postMessage("SYSTEM", "音声エンジン始動。解析を開始します。", "ai");
+    } catch (e) {
+        console.error(e);
+    }
+};
+
+// 4. GitHub Pagesなどの環境で確実にクリックイベントを拾うための設定
+document.addEventListener('DOMContentLoaded', () => {
+    const startBtn = document.getElementById('start-trigger');
+    if (startBtn) {
+        startBtn.addEventListener('click', () => {
+            window.initCompanion();
+        });
+    }
+});
 
 window.initCompanion = function() {
     if (isStarted) return;
