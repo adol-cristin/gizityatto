@@ -2,11 +2,11 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Companion - 3:4 Chat Style</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI Companion</title>
     <style>
         :root {
-            --yt-bg: rgba(15, 15, 15, 0.9);
+            --yt-bg: #0f0f0f;
             --yt-name: #aaaaaa;
             --yt-text: #ffffff;
         }
@@ -14,61 +14,94 @@
             background-color: #111;
             margin: 0; padding: 0;
             display: flex; justify-content: center; align-items: center; 
-            height: 100vh; overflow: hidden; font-family: sans-serif;
+            height: 100vh; width: 100vw;
+            overflow: hidden; font-family: sans-serif;
         }
         
+        /* チャットウィンドウ：スマホでもはみ出さないよう調整 */
         #chat-window {
-            width: 300px;  
-            height: 400px; 
+            width: 90vw;
+            max-width: 350px;
+            height: 80vh;
+            max-height: 500px;
             background: #000;
             border: 1px solid #333;
             display: flex;
             flex-direction: column;
             position: relative;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            /* スクロールをここで行うように設定 */
             overflow-y: auto;
             scroll-behavior: smooth;
         }
 
+        /* 開始ボタンのオーバーレイ：画面いっぱいに広げ、中央配置を徹底 */
         #start-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 10;
-            display: flex; justify-content: center; align-items: center; cursor: pointer;
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); 
+            z-index: 100; /* 最前面に */
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
         }
-        .start-btn { padding: 10px 20px; background: #cc0000; color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        
+        .start-btn { 
+            padding: 15px 30px; 
+            background: #cc0000; 
+            color: white; 
+            border: none; 
+            font-weight: bold; 
+            cursor: pointer; 
+            border-radius: 8px;
+            font-size: 16px;
+            box-shadow: 0 4px 10px rgba(204, 0, 0, 0.4);
+        }
 
         #chat-flow {
             width: 100%;
             padding: 10px;
             box-sizing: border-box;
-            /* 下から上に溜まるようにflexを活用 */
-            margin-top: auto; 
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            min-height: 100%;
         }
 
         .yt-message {
             display: flex; align-items: flex-start;
-            padding: 4px 8px; margin-bottom: 4px;
-            animation: yt-slide 0.2s ease-out;
+            padding: 6px 8px; margin-bottom: 6px;
+            animation: yt-slide 0.3s ease-out;
         }
 
         .yt-avatar {
-            width: 24px; height: 24px; border-radius: 50%;
-            margin-right: 10px; flex-shrink: 0;
+            width: 28px; height: 28px; border-radius: 50%;
+            margin-right: 12px; flex-shrink: 0;
             background: linear-gradient(45deg, #bf953f, #fcf6ba);
         }
 
         .yt-content { display: flex; flex-direction: column; }
-        .yt-name { color: var(--yt-name); font-size: 11px; font-weight: bold; }
-        .yt-text { color: var(--yt-text); font-size: 13px; line-height: 1.4; word-break: break-all; }
+        .yt-name { color: var(--yt-name); font-size: 11px; font-weight: bold; margin-bottom: 2px; }
+        .yt-text { color: var(--yt-text); font-size: 14px; line-height: 1.4; word-break: break-all; }
 
         .user-avatar { background: #555 !important; }
 
         @keyframes yt-slide {
-            from { opacity: 0; transform: translateY(5px); }
+            from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
     </style>
+</head>
+<body>
+    <div id="chat-window">
+        <div id="start-overlay">
+            <button class="start-btn" id="start-trigger">チャット開始</button>
+        </div>
+        <div id="chat-flow"></div>
+    </div>
+    <script src="./script.js"></script>
+</body>
+</html>
 </head>
 <body>
     <div id="chat-window">
