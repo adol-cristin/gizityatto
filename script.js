@@ -1,4 +1,4 @@
-// 1. 拡張版辞書データ
+// 1. 辞書データ（内容は維持）
 const dictionaryData = {
     "climax": {
         "keywords": ["ここで決める", "ここだ", "これで決める", "行くぜ", "今だ", "チャンス"],
@@ -44,7 +44,7 @@ const dictionaryData = {
 
 const names = ["♛ Empress Luna", "✦ Golden Duke", "✧ Madam Diamond"];
 
-// 2. メッセージ表示関数
+// 2. メッセージ表示関数（フェードアウトと自動削除を追加）
 function postMessage(name, text, type = "ai") {
     const chatFlow = document.getElementById('chat-flow');
     if (!chatFlow) return;
@@ -63,13 +63,24 @@ function postMessage(name, text, type = "ai") {
 
     chatFlow.appendChild(msgDiv);
 
-    // --- 【重要】古いメッセージを消して「詰まり」を解消する処理 ---
+    // --- 【重要】古いメッセージの削除ロジック ---
+    // メッセージが溜まって「上で詰まる」のを防ぐため、一定数を超えたら古いものを消します
     const messages = chatFlow.getElementsByClassName('yt-message');
-    if (messages.length > 15) { // 15件を超えたら一番上の古いメッセージを削除
-        chatFlow.removeChild(messages[0]);
+    if (messages.length > 15) { // 同時に表示する上限を15件に設定
+        const firstMsg = messages[0];
+        // 上へフェードアウトさせるためのクラスを追加（CSSのアニメーションと連動）
+        firstMsg.style.opacity = '0';
+        firstMsg.style.transform = 'translateY(-20px)';
+        firstMsg.style.transition = 'all 0.3s ease';
+        
+        setTimeout(() => {
+            if (firstMsg.parentNode === chatFlow) {
+                chatFlow.removeChild(firstMsg);
+            }
+        }, 300);
     }
 
-    // スクロールを一番下に固定
+    // 最新のメッセージが常に下に来るようにスクロールを調整
     const chatWindow = document.getElementById('chat-window');
     setTimeout(() => {
         chatWindow.scrollTo({
@@ -83,15 +94,7 @@ function postMessage(name, text, type = "ai") {
 let recognition;
 let isStarted = false;
 
-// 起動ボタンのイベント設定
-document.addEventListener('DOMContentLoaded', () => {
-    const startOverlay = document.getElementById('start-overlay');
-    if (startOverlay) {
-        startOverlay.addEventListener('click', initCompanion);
-    }
-});
-
-function initCompanion() {
+window.initCompanion = function() {
     if (isStarted) return;
     isStarted = true;
 
@@ -107,11 +110,7 @@ function initCompanion() {
     recognition = new SpeechRecognition();
     recognition.lang = 'ja-JP';
     recognition.continuous = true;
-    recognition.interimResults = true; // リアルタイムで聞き取り
-
-    recognition.onstart = () => {
-        postMessage("SYSTEM", "音声エンジン始動。解析を開始します。", "ai");
-    };
+    recognition.interimResults = true; // 認識の精度とレスポンスを上げるためにtrueに変更
 
     recognition.onresult = (event) => {
         let finalTranscript = '';
@@ -125,7 +124,7 @@ function initCompanion() {
             const transcript = finalTranscript.trim();
             postMessage("YOU", transcript, "user");
 
-            // 辞書照合
+            let found = false;
             for (let key in dictionaryData) {
                 if (dictionaryData[key].keywords.some(kw => transcript.includes(kw))) {
                     const resList = dictionaryData[key].responses;
@@ -135,6 +134,7 @@ function initCompanion() {
                         const charName = names[Math.floor(Math.random() * names.length)];
                         postMessage(charName, reply, "ai");
                     }, 600);
+                    found = true;
                     break;
                 }
             }
@@ -143,19 +143,28 @@ function initCompanion() {
 
     recognition.onerror = (event) => {
         console.error("Recognition error:", event.error);
+        if (event.error === 'not-allowed') {
+            alert("マイクの使用を許可してください。");
+        }
     };
 
     recognition.onend = () => {
+        // 音声認識が切れても自動で再開する
         if (isStarted) {
             setTimeout(() => {
-                try { recognition.start(); } catch(e) {}
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.error("再開に失敗:", e);
+                }
             }, 400);
         }
     };
 
     try {
         recognition.start();
+        postMessage("SYSTEM", "音声エンジン始動。解析を開始します。", "ai");
     } catch (e) {
         console.error(e);
     }
-}
+};
