@@ -125,32 +125,3 @@ window.initCompanion = function() {
         console.error(e);
     }
 };
-    };
-
-    // 重要：エラーハンドリング（これが無いと止まったままになります）
-    recognition.onerror = (event) => {
-        console.error("Speech Recognition Error:", event.error);
-        if (event.error === 'not-allowed') {
-            postMessage("SYSTEM", "マイクの許可が必要です。URL横の鍵マークを確認してください。", "ai");
-        }
-    };
-
-    // 重要：安全な再起動
-    recognition.onend = () => {
-        if (isStarted) {
-            console.log("Recognition ended, restarting...");
-            try {
-                recognition.start();
-            } catch (e) {
-                console.error("Restart failed:", e);
-            }
-        }
-    };
-
-    try {
-        recognition.start();
-        postMessage("SYSTEM", "音声認識アクティブ：お話しください", "ai");
-    } catch (e) {
-        console.error("Start failed:", e);
-    }
-};
