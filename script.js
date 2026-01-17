@@ -126,15 +126,17 @@ function postMessage(name, text, type = "ai") {
 
 // 3. 起動処理
 window.initCompanion = function() {
-    console.log("起動ボタンが押されました");
+// script.js の window.initCompanion 内を以下のように補強してください
+
+window.initCompanion = function() {
     const overlay = document.getElementById('start-overlay');
     if (overlay) overlay.style.display = 'none';
 
-    postMessage("SYSTEM", "接続完了。マイクを許可してください。", "ai");
+    postMessage("SYSTEM", "音声エンジンを起動中...", "ai");
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-        alert("ブラウザが音声認識に対応していません。Chromeをお使いください。");
+        alert("お使いのブラウザは音声認識に対応していません。ChromeまたはSafariの最新版をお試しください。");
         return;
     }
 
@@ -143,17 +145,21 @@ window.initCompanion = function() {
     recognition.continuous = true;
     recognition.interimResults = false;
 
-    recognition.onresult = (event) => {
-        const userText = event.results[event.results.length - 1][0].transcript.trim();
-        postMessage("YOU", userText, "user");
+    // GitHub(HTTPS)環境では、一度エラーが出ると止まることがあるため、明示的に開始
+    try {
+        recognition.start();
+        postMessage("SYSTEM", "マイクの待機を開始しました。お話しください。", "ai");
+    } catch (e) {
+        console.error("マイク起動失敗:", e);
+        postMessage("SYSTEM", "マイクの起動に失敗しました。設定を確認してください。", "ai");
+    }
 
-        let reply = "";
-        for (let category in dictionaryData) {
-            if (dictionaryData[category].keywords.some(k => userText.includes(k))) {
-                reply = dictionaryData[category].responses[Math.floor(Math.random() * dictionaryData[category].responses.length)];
-                break;
-            }
+    // 途中で止まらないようにリスタート処理を強化
+    recognition.onend = () => {
+        if (!gameOver) { // ゲーム中の場合は自動で再開
+            try { recognition.start(); } catch(e) {}
         }
+    };
 
         if (reply) {
             setTimeout(() => {
