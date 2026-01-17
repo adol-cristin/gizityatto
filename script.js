@@ -86,64 +86,75 @@ window.initCompanion = function() {
     recognition = new SpeechRecognition();
     recognition.lang = 'ja-JP';
     recognition.continuous = true;
-    recognition.interimResults = true; // リアルタイム認識を有効化
+    // interimResultsをtrueにすることで、喋っている途中の文字も取得しやすくします
+    recognition.interimResults = true;
 
     recognition.onresult = (event) => {
-        let transcript = '';
+        let finalTranscript = ''; // 確定した文章
+        let interimTranscript = ''; // 喋っている途中の文章
+
         for (let i = event.resultIndex; i < event.results.length; i++) {
-            // 文が「確定（isFinal）」した時だけ処理する
+            const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
-                transcript = event.results[i][0].transcript.trim();
+                finalTranscript += transcript;
+            } else {
+                interimTranscript += transcript;
             }
         }
 
-        if (transcript !== '') {
-            console.log("認識確定:", transcript);
-            postMessage("YOU", transcript, "user");
-
-            let found = false;
-            for (let key in dictionaryData) {
-                if (dictionaryData[key].keywords.some(kw => transcript.includes(kw))) {
-                    const resList = dictionaryData[key].responses;
-                    const reply = resList[Math.floor(Math.random() * resList.length)];
-                    
-                    setTimeout(() => {
-                        const charName = names[Math.floor(Math.random() * names.length)];
-                        postMessage(charName, reply, "ai");
-                    }, 600);
-                    found = true;
-                    break;
-                }
-            }
+        // 文章が確定したら処理を実行
+        if (finalTranscript !== '') {
+            processText(finalTranscript);
         }
     };
 
+    // テキストを解析して返信を生成する関数
+    function processText(text) {
+        const transcript = text.trim();
+        postMessage("YOU", transcript, "user");
+
+        for (let key in dictionaryData) {
+            if (dictionaryData[key].keywords.some(kw => transcript.includes(kw))) {
+                const resList = dictionaryData[key].responses;
+                const reply = resList[Math.floor(Math.random() * resList.length)];
+                
+                setTimeout(() => {
+                    const charName = names[Math.floor(Math.random() * names.length)];
+                    postMessage(charName, reply, "ai");
+                }, 600);
+                return; // 一致したら終了
+            }
+        }
+    }
+
     recognition.onerror = (event) => {
-        console.error("Recognition error:", event.error);
-        // ネットワークエラーなどで止まった場合に備え、少し待って再起動を試みる
-        if (event.error === 'network') {
-            setTimeout(() => { if (isStarted) recognition.start(); }, 3000);
+        console.error("音声認識エラー:", event.error);
+        if (event.error === 'no-speech') {
+            // 無音状態が続いた場合は再起動を試みる
+            restartRecognition();
         }
     };
 
     recognition.onend = () => {
-        console.log("音声認識が終了しました。再起動します...");
         if (isStarted) {
-            // 連続して認識を続けるために再帰的に起動
-            setTimeout(() => {
-                try {
-                    recognition.start();
-                } catch(e) {
-                    console.error("再起動失敗:", e);
-                }
-            }, 300);
+            restartRecognition();
         }
     };
+
+    function restartRecognition() {
+        setTimeout(() => {
+            try {
+                recognition.start();
+            } catch (e) {
+                // すでに開始されている場合は無視
+            }
+        }, 400);
+    }
 
     try {
         recognition.start();
         postMessage("SYSTEM", "音声エンジン始動。解析を開始します。", "ai");
     } catch (e) {
-        console.error("初期起動失敗:", e);
+        console.error(e);
     }
 };
