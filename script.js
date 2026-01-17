@@ -1,4 +1,3 @@
-// 1. 辞書データ (提供された内容を維持)
 const dictionaryData = {
     "climax": {
         "keywords": ["ここで決める", "ここだ", "これで決める", "行くぜ", "今だ", "チャンス"],
@@ -14,28 +13,40 @@ const dictionaryData = {
     },
     "relief": {
         "keywords": ["ふう", "倒した", "いい感じだ", "大丈夫", "まあ", "ふふふ", "まあ大丈夫でしょ", "よっしゃ"],
-        "responses": ["お疲れ様！いい流れが来てるね。", "その調子！今のプレイ", "安定感あったよ。", "ナイス撃破！完全に圧倒してるね！"]
+        "responses": ["お疲れ様！いい流れが来てるね。", "その調子！今のプレイ、安定感あったよ。", "ナイス撃破！完全に圧倒してるね！"]
     },
     "trouble": {
-        "keywords": ["どうしたものか", "どうしよ", "どうしようかな", "疲れた", "ふう疲れた", "どうしたものかな", "どうしようか", "うーん", "あれ", "あれれ", "あらら", "全然わからん", "全くわからん", "どういうこと", "いかほどか"],
+        "keywords": [
+            "どうしたものか", "どうしよ", "どうしようかな", "疲れた", "ふう疲れた", 
+            "どうしたものかな", "どうしようか", "うーん", "あれ", "あれれ", "あらら",
+            "全然わからん", "全くわからん", "どういうこと", "いかほどか"
+        ],
         "responses": ["落ち着いて、まだ挽回できるよ！", "一旦状況を整理してみようか。", "うーん、どうくるかな…？慎重に見極めよう。"]
     },
     "panic": {
-        "keywords": ["やばいやばいやばいやばいやばいやばいやばい", "やばいやばいやばいやばいやばい", "やばいやばいやばいやばい", "やばいやばい", "やばい"],
+        "keywords": [
+            "やばいやばいやばいやばいやばいやばいやばい", "やばいやばいやばいやばいやばい", 
+            "やばいやばいやばいやばい", "やばいやばい", "やばい"
+        ],
         "responses": ["落ち着いて！深呼吸だ！", "ピンチはチャンス！まだ諦めるな！", "ここを凌げばこっちのターンだ！踏ん張れ！"]
     },
     "research": {
-        "keywords": ["サーチしてくれ", "ジャービス 敵をロックしてくれ", "ロックオン サーチ", "ロックオン", "敵を観測してくれ", "敵をリサーチしてくれ", "ジャービス 敵をリサーチしてくれ", "ジャービス 敵を観測してくれ", "リサーチ機能", "リサーチ機能 オン", "リサーチ オン", "サーチ", "サーチ機能 オン", "サーチ機能オンにしてくれ", "索敵 してくれ"],
+        "keywords": [
+            "サーチしてくれ", "ジャービス 敵をロックしてくれ", "ロックオン サーチ", "ロックオン", 
+            "敵を観測してくれ", "敵をリサーチしてくれ", "ジャービス 敵をリサーチしてくれ", 
+            "ジャービス 敵を観測してくれ", "リサーチ機能", "リサーチ機能 オン", "リサーチ オン", 
+            "サーチ", "サーチ機能 オン", "サーチ機能オンにしてくれ", "索敵 してくれ"
+        ],
         "responses": ["了解。リサーチを開始します。", "ターゲット確認。解析データを展開するよ。", "スキャン完了。周囲の情報を同期するね。"]
     }
 };
 
-const names = ["♛ Empress Luna", "✦ Golden Duke", "✧ Madam Diamond"]; //
+const names = ["♛ Empress Luna", "✦ Golden Duke", "✧ Madam Diamond"];
 
-// 2. メッセージ表示関数 (古いメッセージの削除機能を追加)
 function postMessage(name, text, type = "ai") {
     const chatFlow = document.getElementById('chat-flow');
-    if (!chatFlow) return;
+    const chatWindow = document.getElementById('chat-window');
+    if (!chatFlow || !chatWindow) return;
 
     const msgDiv = document.createElement('div');
     msgDiv.className = 'yt-message';
@@ -50,26 +61,78 @@ function postMessage(name, text, type = "ai") {
     `;
 
     chatFlow.appendChild(msgDiv);
-
-    // 上限(20件)を超えたら古い順に削除して「詰まり」を解消
-    const messages = chatFlow.getElementsByClassName('yt-message');
-    if (messages.length > 20) {
-        const firstMsg = messages[0];
-        firstMsg.style.opacity = '0';
-        firstMsg.style.transform = 'translateY(-20px)';
-        setTimeout(() => { if (firstMsg.parentNode) chatFlow.removeChild(firstMsg); }, 300);
-    }
-
-    // スクロールを一番下に維持
-    const chatWindow = document.getElementById('chat-window');
-    chatWindow.scrollTop = chatWindow.scrollHeight;
+    
+    // スクロール処理
+    setTimeout(() => {
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }, 50);
 }
 
-// 3. 音声認識の本体
 let recognition;
 let isStarted = false;
 
-// 起動ボタンの処理
+window.initCompanion = function() {
+    if (isStarted) return;
+    isStarted = true;
+
+    const overlay = document.getElementById('start-overlay');
+    if (overlay) overlay.style.display = 'none';
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("音声認識未対応のブラウザです。Chromeでお試しください。");
+        return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.lang = 'ja-JP';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[event.results.length - 1][0].transcript.trim();
+        postMessage("YOU", transcript, "user");
+
+        for (let key in dictionaryData) {
+            if (dictionaryData[key].keywords.some(kw => transcript.includes(kw))) {
+                const resList = dictionaryData[key].responses;
+                const reply = resList[Math.floor(Math.random() * resList.length)];
+                
+                setTimeout(() => {
+                    const charName = names[Math.floor(Math.random() * names.length)];
+                    postMessage(charName, reply, "ai");
+                }, 600);
+                break;
+            }
+        }
+    };
+
+    recognition.onerror = (event) => {
+        console.error("Recognition error:", event.error);
+        // 許可が得られなかった場合などの通知
+        if (event.error === 'not-allowed') {
+            alert("マイクの使用を許可してください。");
+        }
+    };
+
+    // 音声認識が終了したら自動で再起動（GitHub環境でも安定させるため）
+    recognition.onend = () => {
+        if (isStarted) {
+            try {
+                recognition.start();
+            } catch (e) {
+                console.log("Recognition restart failed, retrying...");
+            }
+        }
+    };
+
+    try {
+        recognition.start();
+        postMessage("SYSTEM", "音声エンジン始動。解析を開始します。", "ai");
+    } catch (e) {
+        console.error(e);
+    }
+};
 document.addEventListener('DOMContentLoaded', () => {
     const startOverlay = document.getElementById('start-overlay');
     if (startOverlay) {
