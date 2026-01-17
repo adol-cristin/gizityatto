@@ -195,3 +195,42 @@ function initCompanion() {
 
     recognition.start(); //
 }
+
+// ...（前回の dictionaryData 等はそのまま）...
+
+// initCompanion 関数内の冒頭を少し強化
+window.initCompanion = function() {
+    if (isStarted) return;
+    
+    // ブラウザの音声認識を有効化するためのユーザーアクション後の処理
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("お使いのブラウザは音声認識に対応していません。Chromeをお試しください。");
+        return;
+    }
+
+    isStarted = true;
+    const overlay = document.getElementById('start-overlay');
+    if (overlay) overlay.style.display = 'none';
+
+    recognition = new SpeechRecognition();
+    // ...（中略：前回の設定と同じ）...
+    
+    // 確実に開始
+    try {
+        recognition.start();
+        postMessage("SYSTEM", "音声エンジン始動。解析を開始します。", "ai");
+    } catch (e) {
+        console.error("開始エラー:", e);
+    }
+};
+
+// 確実にボタンが押せるようにする設定（ファイルの末尾に追加してください）
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('start-trigger');
+    if (btn) {
+        btn.addEventListener('click', () => {
+            window.initCompanion();
+        });
+    }
+});
