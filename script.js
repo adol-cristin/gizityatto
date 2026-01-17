@@ -1,4 +1,4 @@
-// 1. 辞書データ（内容は維持）
+// 1. 辞書データ
 const dictionaryData = {
     "climax": {
         "keywords": ["ここで決める", "ここだ", "これで決める", "行くぜ", "今だ", "チャンス"],
@@ -44,7 +44,7 @@ const dictionaryData = {
 
 const names = ["♛ Empress Luna", "✦ Golden Duke", "✧ Madam Diamond"];
 
-// 2. メッセージ表示関数（フェードアウトと自動削除を追加）
+// 2. メッセージ表示と自動削除
 function postMessage(name, text, type = "ai") {
     const chatFlow = document.getElementById('chat-flow');
     if (!chatFlow) return;
@@ -63,16 +63,12 @@ function postMessage(name, text, type = "ai") {
 
     chatFlow.appendChild(msgDiv);
 
-    // --- 【重要】古いメッセージの削除ロジック ---
-    // メッセージが溜まって「上で詰まる」のを防ぐため、一定数を超えたら古いものを消します
+    // 古いメッセージ（15件以上）を上から順にフェードアウトして削除
     const messages = chatFlow.getElementsByClassName('yt-message');
-    if (messages.length > 15) { // 同時に表示する上限を15件に設定
+    if (messages.length > 15) {
         const firstMsg = messages[0];
-        // 上へフェードアウトさせるためのクラスを追加（CSSのアニメーションと連動）
         firstMsg.style.opacity = '0';
         firstMsg.style.transform = 'translateY(-20px)';
-        firstMsg.style.transition = 'all 0.3s ease';
-        
         setTimeout(() => {
             if (firstMsg.parentNode === chatFlow) {
                 chatFlow.removeChild(firstMsg);
@@ -80,37 +76,42 @@ function postMessage(name, text, type = "ai") {
         }, 300);
     }
 
-    // 最新のメッセージが常に下に来るようにスクロールを調整
+    // 最新にスクロール
     const chatWindow = document.getElementById('chat-window');
-    setTimeout(() => {
-        chatWindow.scrollTo({
-            top: chatWindow.scrollHeight,
-            behavior: 'smooth'
-        });
-    }, 50);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
-// 3. 音声認識の本体
+// 3. 起動処理と音声認識
 let recognition;
 let isStarted = false;
 
-window.initCompanion = function() {
+document.addEventListener('DOMContentLoaded', () => {
+    const startOverlay = document.getElementById('start-overlay');
+    if (startOverlay) {
+        startOverlay.addEventListener('click', initCompanion);
+    }
+});
+
+function initCompanion() {
     if (isStarted) return;
     isStarted = true;
 
-    const overlay = document.getElementById('start-overlay');
-    if (overlay) overlay.style.display = 'none';
+    document.getElementById('start-overlay').style.display = 'none';
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-        alert("音声認識未対応です。Chromeでお試しください。");
+        alert("Chromeブラウザを使用してください。");
         return;
     }
 
     recognition = new SpeechRecognition();
     recognition.lang = 'ja-JP';
     recognition.continuous = true;
-    recognition.interimResults = true; // 認識の精度とレスポンスを上げるためにtrueに変更
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+        postMessage("SYSTEM", "音声エンジン始動。解析を開始します。", "ai");
+    };
 
     recognition.onresult = (event) => {
         let finalTranscript = '';
@@ -124,47 +125,25 @@ window.initCompanion = function() {
             const transcript = finalTranscript.trim();
             postMessage("YOU", transcript, "user");
 
-            let found = false;
             for (let key in dictionaryData) {
                 if (dictionaryData[key].keywords.some(kw => transcript.includes(kw))) {
                     const resList = dictionaryData[key].responses;
                     const reply = resList[Math.floor(Math.random() * resList.length)];
-                    
                     setTimeout(() => {
                         const charName = names[Math.floor(Math.random() * names.length)];
                         postMessage(charName, reply, "ai");
                     }, 600);
-                    found = true;
                     break;
                 }
             }
         }
     };
 
-    recognition.onerror = (event) => {
-        console.error("Recognition error:", event.error);
-        if (event.error === 'not-allowed') {
-            alert("マイクの使用を許可してください。");
-        }
-    };
-
     recognition.onend = () => {
-        // 音声認識が切れても自動で再開する
         if (isStarted) {
-            setTimeout(() => {
-                try {
-                    recognition.start();
-                } catch (e) {
-                    console.error("再開に失敗:", e);
-                }
-            }, 400);
+            setTimeout(() => { try { recognition.start(); } catch(e) {} }, 400);
         }
     };
 
-    try {
-        recognition.start();
-        postMessage("SYSTEM", "音声エンジン始動。解析を開始します。", "ai");
-    } catch (e) {
-        console.error(e);
-    }
-};
+    recognition.start();
+}
