@@ -155,3 +155,35 @@ window.initCompanion = function() {
     }
 };
 
+function postMessage(name, text, type = "ai") {
+    const chatFlow = document.getElementById('chat-flow');
+    if (!chatFlow) return;
+
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'yt-message';
+    const isUser = (type === "user");
+    
+    msgDiv.innerHTML = `
+        <div class="yt-avatar ${isUser ? 'user-avatar' : ''}"></div>
+        <div class="yt-content">
+            <span class="yt-name">${name}</span>
+            <span class="yt-text">${text}</span>
+        </div>
+    `;
+
+    chatFlow.appendChild(msgDiv);
+
+    // --- 【重要】古いメッセージの削除処理 ---
+    // メッセージが20件を超えたら、一番古いもの（最初の要素）を消す
+    const messages = chatFlow.getElementsByClassName('yt-message');
+    if (messages.length > 20) {
+        chatFlow.removeChild(messages[0]);
+    }
+
+    // 常に一番下までスクロールさせる
+    const chatWindow = document.getElementById('chat-window');
+    chatWindow.scrollTo({
+        top: chatWindow.scrollHeight,
+        behavior: 'smooth'
+    });
+}
