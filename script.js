@@ -62,7 +62,6 @@ function postMessage(name, text, type = "ai") {
     `;
 
     chatFlow.appendChild(msgDiv);
-    // 親要素である chat-window をスクロールさせる
     const chatWindow = document.getElementById('chat-window');
     chatWindow.scrollTo({ top: chatWindow.scrollHeight, behavior: 'smooth' });
 }
@@ -87,41 +86,64 @@ window.initCompanion = function() {
     recognition = new SpeechRecognition();
     recognition.lang = 'ja-JP';
     recognition.continuous = true;
-    recognition.interimResults = false;
+    recognition.interimResults = true; // リアルタイム認識を有効化
 
     recognition.onresult = (event) => {
-        const transcript = event.results[event.results.length - 1][0].transcript.trim();
-        postMessage("YOU", transcript, "user");
-
-        let found = false;
-        for (let key in dictionaryData) {
-            if (dictionaryData[key].keywords.some(kw => transcript.includes(kw))) {
-                const resList = dictionaryData[key].responses;
-                const reply = resList[Math.floor(Math.random() * resList.length)];
-                
-                setTimeout(() => {
-                    const charName = names[Math.floor(Math.random() * names.length)];
-                    postMessage(charName, reply, "ai");
-                }, 600);
-                found = true;
-                break;
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            // 文が「確定（isFinal）」した時だけ処理する
+            if (event.results[i].isFinal) {
+                transcript = event.results[i][0].transcript.trim();
             }
         }
-        // 辞書にない言葉でも「YOU」として表示はされるので安心してください
+
+        if (transcript !== '') {
+            console.log("認識確定:", transcript);
+            postMessage("YOU", transcript, "user");
+
+            let found = false;
+            for (let key in dictionaryData) {
+                if (dictionaryData[key].keywords.some(kw => transcript.includes(kw))) {
+                    const resList = dictionaryData[key].responses;
+                    const reply = resList[Math.floor(Math.random() * resList.length)];
+                    
+                    setTimeout(() => {
+                        const charName = names[Math.floor(Math.random() * names.length)];
+                        postMessage(charName, reply, "ai");
+                    }, 600);
+                    found = true;
+                    break;
+                }
+            }
+        }
     };
 
     recognition.onerror = (event) => {
         console.error("Recognition error:", event.error);
+        // ネットワークエラーなどで止まった場合に備え、少し待って再起動を試みる
+        if (event.error === 'network') {
+            setTimeout(() => { if (isStarted) recognition.start(); }, 3000);
+        }
     };
 
     recognition.onend = () => {
-        if (isStarted) recognition.start();
+        console.log("音声認識が終了しました。再起動します...");
+        if (isStarted) {
+            // 連続して認識を続けるために再帰的に起動
+            setTimeout(() => {
+                try {
+                    recognition.start();
+                } catch(e) {
+                    console.error("再起動失敗:", e);
+                }
+            }, 300);
+        }
     };
 
     try {
         recognition.start();
         postMessage("SYSTEM", "音声エンジン始動。解析を開始します。", "ai");
     } catch (e) {
-        console.error(e);
+        console.error("初期起動失敗:", e);
     }
 };
