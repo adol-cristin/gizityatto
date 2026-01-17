@@ -2,200 +2,79 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gemini AI - GitHub Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Companion - 3:4 Chat Style</title>
     <style>
         :root {
-            --gold: linear-gradient(45deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
-            --royal-purple: rgba(20, 5, 30, 0.96);
+            --yt-bg: rgba(15, 15, 15, 0.9);
+            --yt-name: #aaaaaa;
+            --yt-text: #ffffff;
         }
-        body { background-color: #000; margin: 0; padding: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: serif; }
-        .chat-container { width: 95vw; max-width: 400px; height: 500px; position: relative; border: 3px solid transparent; border-image: var(--gold) 1; padding: 20px; box-sizing: border-box; overflow: hidden; background: rgba(0, 0, 0, 0.3); display: flex; flex-direction: column; justify-content: flex-end; }
-        #chat-flow { display: flex; flex-direction: column; gap: 12px; width: 100%; }
-        .message { background: var(--royal-purple); backdrop-filter: blur(15px); border: 2px solid rgba(191, 149, 63, 0.9); padding: 15px; border-radius: 10px; animation: slideIn 0.6s ease-out forwards; }
-        @keyframes slideIn { 0% { opacity: 0; transform: translateY(30px); } 100% { opacity: 1; transform: translateY(0); } }
-        .user-name { font-size: 24px; font-weight: 900; background: var(--gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 5px; }
-        .text { color: #fff; font-size: 28px; line-height: 1.3; font-weight: 800; text-shadow: 2px 2px 4px #000; }
-        .error-msg { border-color: #ff4444 !important; }
-        .error-msg .text { font-size: 14px !important; color: #ffaaaa; }
-        #api-config { position: absolute; top: 0; left: 0; background: #222; color: #fff; z-index: 100; padding: 25px; width: 100%; box-sizing: border-box; }
-        input { width: 100%; padding: 12px; font-size: 16px; margin-bottom: 10px; border-radius: 5px; background: #444; color: #fff; border: 1px solid #666; }
-        button { width: 100%; padding: 12px; font-size: 18px; background: #bf953f; border: none; font-weight: bold; border-radius: 5px; color: #000; }
+        body { 
+            background-color: #111;
+            margin: 0; padding: 0;
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; overflow: hidden; font-family: sans-serif;
+        }
+        
+        /* 3:4 の比率に固定したチャットコンテナ */
+        #chat-window {
+            width: 300px;  /* 横 3 */
+            height: 400px; /* 縦 4 */
+            background: #000;
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end; 
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        #start-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 10;
+            display: flex; justify-content: center; align-items: center; cursor: pointer;
+        }
+        .start-btn { padding: 10px 20px; background: #cc0000; color: white; border: none; font-weight: bold; cursor: pointer; }
+
+        #chat-flow {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow-y: hidden;
+        }
+
+        .yt-message {
+            display: flex; align-items: flex-start;
+            padding: 4px 8px; margin-bottom: 4px;
+            animation: yt-slide 0.2s ease-out;
+        }
+
+        .yt-avatar {
+            width: 24px; height: 24px; border-radius: 50%;
+            margin-right: 10px; flex-shrink: 0;
+            background: linear-gradient(45deg, #bf953f, #fcf6ba);
+        }
+
+        .yt-content { display: flex; flex-direction: column; }
+        .yt-name { color: var(--yt-name); font-size: 12px; font-weight: bold; }
+        .yt-text { color: var(--yt-text); font-size: 13px; line-height: 1.4; word-break: break-all; }
+
+        .user-avatar { background: #555 !important; }
+
+        @keyframes yt-slide {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
-    <div id="api-config">
-        <input type="text" id="api-key" placeholder="APIキーを入力" spellcheck="false">
-        <button onclick="startAI()">GitHubから接続開始</button>
-    </div>
-    <div class="chat-container">
+    <div id="chat-window">
+        <div id="start-overlay" onclick="initCompanion()">
+            <button class="start-btn">チャット開始</button>
+        </div>
         <div id="chat-flow"></div>
     </div>
-
-    <script>
-        let API_KEY = "";
-        // GitHubでも通りやすい正規のモデル名リスト
-        const models = ["gemini-1.5-flash", "gemini-2.0-flash-exp", "gemini-pro"];
-        let modelIdx = 0;
-
-        async function fetchGeminiResponse() {
-            if (!API_KEY) return;
-            const prompt = "ゴージャスな合いの手を1つ。語尾は『ですわ』。20文字以内。";
-            const currentModel = models[modelIdx];
-            
-            try {
-                // モデル名の前に 'models/' を明示的に付けることで、GitHubからのリクエストを安定させます
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${API_KEY}`;
-                
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-                });
-
-                const data = await res.json();
-                
-                if (!res.ok) {
-                    // モデルが見つからない(404)場合は、次のモデルを試す
-                    if (res.status === 404 && modelIdx < models.length - 1) {
-                        modelIdx++;
-                        console.log("Next model trial:", models[modelIdx]);
-                        return fetchGeminiResponse();
-                    }
-                    throw new Error(data.error?.message || "接続エラー");
-                }
-
-                if (data.candidates?.[0]?.content) {
-                    const aiText = data.candidates[0].content.parts[0].text.trim();
-                    const names = ["Empress Luna", "Golden Duke", "Madam Diamond"];
-                    postMessage(names[Math.floor(Math.random() * names.length)], aiText);
-                }
-            } catch (e) {
-                if (e.message.includes("429") || e.message.includes("quota")) {
-                    postMessage("SYSTEM", "Google制限中... 1分ほどお待ちを。", "error");
-                } else {
-                    postMessage("SYSTEM", e.message, "error");
-                }
-            }
-        }
-
-        function postMessage(name, text, type = "") {
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${type === "error" ? "error-msg" : ""}`;
-            msgDiv.innerHTML = `<div class="user-name">✦ ${name}</div><div class="text">${text}</div>`;
-            const flow = document.getElementById('chat-flow');
-            flow.appendChild(msgDiv);
-            if (flow.children.length > 3) flow.removeChild(flow.firstChild);
-        }
-
-        function startAI() {
-            API_KEY = document.getElementById('api-key').value.trim();
-            if (!API_KEY) return;
-            document.getElementById('api-config').style.display = 'none';
-            
-            postMessage("SYSTEM", "GitHub連携中... まもなく始まります。");
-            
-            // GitHub経由は初回が不安定になりやすいため、5秒後に開始
-            setTimeout(() => {
-                fetchGeminiResponse();
-                // 制限を回避するため、ゆったり40秒間隔
-                setInterval(fetchGeminiResponse, 40000);
-            }, 5000);
-        }
-    </script>
-</body>
-</html>
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${type === "error" ? "error-msg" : ""}`;
-            msgDiv.innerHTML = `<div class="user-name">✦ ${name}</div><div class="text">${text}</div>`;
-            const flow = document.getElementById('chat-flow');
-            flow.appendChild(msgDiv);
-            if (flow.children.length > 3) flow.removeChild(flow.firstChild);
-        }
-
-        async function startAI() {
-            API_KEY = document.getElementById('api-key').value.trim();
-            if (!API_KEY) return;
-            document.getElementById('api-config').style.display = 'none';
-            
-            postMessage("SYSTEM", "最終準備中... 1分ほどお待ちください。");
-            
-            // 重要なポイント：
-            // 前回の「32秒待ち」を確実に超えるため、最初の実行を1分後（60秒後）に設定します。
-            setTimeout(() => {
-                postMessage("SYSTEM", "宴、再開ですわ！");
-                fetchGeminiResponse();
-                // その後は45秒おきにゆったりと喋らせます（無料枠を使い切らないため）
-                setInterval(fetchGeminiResponse, 45000);
-            }, 60000); 
-        }
-    </script>
-</body>
-</html>
-        <p style="font-size:12px; color:#aaa; margin-top:10px;">※一度開始すると入力欄は消えます</p>
-    </div>
-
-    <div class="chat-container">
-        <div id="chat-flow"></div>
-    </div>
-
-    <script>
-        let API_KEY = "";
-        const chatFlow = document.getElementById('chat-flow');
-        const names = ["♛ Empress Luna", "Golden Duke", "Madam Diamond", "Crystal Muse"];
-
-        async function fetchGeminiResponse() {
-            if (!API_KEY) return;
-            const prompt = "あなたは豪華な配信の相棒です。短くインパクトのある『合いの手』を1つだけ生成してください。語尾は『〜ですわ』。20文字以内。余計な説明は不要。";
-
-            try {
-                // 【重要】v1betaエンドポイントを使用
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }]
-                    })
-                });
-
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error ? data.error.message : "通信エラー");
-
-                if (data.candidates && data.candidates[0].content) {
-                    const aiText = data.candidates[0].content.parts[0].text.trim();
-                    postMessage(names[Math.floor(Math.random() * names.length)], aiText);
-                }
-            } catch (error) {
-                postMessage("⚠️ ERROR", error.message, "error");
-            }
-        }
-
-        function postMessage(name, text, type = "") {
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${type === "error" ? "error-msg" : ""}`;
-            msgDiv.innerHTML = `
-                <div class="user-name">${name}</div>
-                <div class="text">${text}</div>
-            `;
-            chatFlow.appendChild(msgDiv);
-            if (chatFlow.children.length > 2) {
-                const firstChild = chatFlow.children[0];
-                firstChild.style.opacity = "0";
-                firstChild.style.marginTop = `-${firstChild.offsetHeight + 15}px`;
-                setTimeout(() => firstChild.remove(), 800);
-            }
-        }
-
-        function startAI() {
-            const inputKey = document.getElementById('api-key').value.trim();
-            if (inputKey) {
-                API_KEY = inputKey;
-                document.getElementById('api-config').classList.add('hidden');
-                postMessage("SYSTEM", "AI連携開始ですわ！");
-                fetchGeminiResponse();
-                setInterval(fetchGeminiResponse, 15000);
-            }
-        }
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
