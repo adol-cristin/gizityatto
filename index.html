@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gemini AI - Final Connect</title>
+    <title>Gemini AI - GitHub Edition</title>
     <style>
         :root {
             --gold: linear-gradient(45deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
@@ -26,7 +26,7 @@
 <body>
     <div id="api-config">
         <input type="text" id="api-key" placeholder="APIキーを入力" spellcheck="false">
-        <button onclick="startAI()">再接続を開始</button>
+        <button onclick="startAI()">GitHubから接続開始</button>
     </div>
     <div class="chat-container">
         <div id="chat-flow"></div>
@@ -34,15 +34,20 @@
 
     <script>
         let API_KEY = "";
-        let SELECTED_MODEL = "gemini-1.5-flash-latest"; // デフォルト
-        const names = ["♛ Empress Luna", "Golden Duke", "Madam Diamond"];
+        // GitHubでも通りやすい正規のモデル名リスト
+        const models = ["gemini-1.5-flash", "gemini-2.0-flash-exp", "gemini-pro"];
+        let modelIdx = 0;
 
         async function fetchGeminiResponse() {
             if (!API_KEY) return;
             const prompt = "ゴージャスな合いの手を1つ。語尾は『ですわ』。20文字以内。";
+            const currentModel = models[modelIdx];
             
             try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${SELECTED_MODEL}:generateContent?key=${API_KEY}`, {
+                // モデル名の前に 'models/' を明示的に付けることで、GitHubからのリクエストを安定させます
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${API_KEY}`;
+                
+                const res = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
@@ -51,18 +56,23 @@
                 const data = await res.json();
                 
                 if (!res.ok) {
-                    // ここでエラーが出ても、setIntervalが次回また試してくれます
-                    throw new Error(data.error?.message || "通信エラー");
+                    // モデルが見つからない(404)場合は、次のモデルを試す
+                    if (res.status === 404 && modelIdx < models.length - 1) {
+                        modelIdx++;
+                        console.log("Next model trial:", models[modelIdx]);
+                        return fetchGeminiResponse();
+                    }
+                    throw new Error(data.error?.message || "接続エラー");
                 }
 
                 if (data.candidates?.[0]?.content) {
                     const aiText = data.candidates[0].content.parts[0].text.trim();
+                    const names = ["Empress Luna", "Golden Duke", "Madam Diamond"];
                     postMessage(names[Math.floor(Math.random() * names.length)], aiText);
                 }
             } catch (e) {
-                // エラー内容を画面に出す（制限回避のためにリトライを促す）
                 if (e.message.includes("429") || e.message.includes("quota")) {
-                    postMessage("SYSTEM", "Google制限中... あと少しで解除されますわ。", "error");
+                    postMessage("SYSTEM", "Google制限中... 1分ほどお待ちを。", "error");
                 } else {
                     postMessage("SYSTEM", e.message, "error");
                 }
@@ -70,6 +80,31 @@
         }
 
         function postMessage(name, text, type = "") {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${type === "error" ? "error-msg" : ""}`;
+            msgDiv.innerHTML = `<div class="user-name">✦ ${name}</div><div class="text">${text}</div>`;
+            const flow = document.getElementById('chat-flow');
+            flow.appendChild(msgDiv);
+            if (flow.children.length > 3) flow.removeChild(flow.firstChild);
+        }
+
+        function startAI() {
+            API_KEY = document.getElementById('api-key').value.trim();
+            if (!API_KEY) return;
+            document.getElementById('api-config').style.display = 'none';
+            
+            postMessage("SYSTEM", "GitHub連携中... まもなく始まります。");
+            
+            // GitHub経由は初回が不安定になりやすいため、5秒後に開始
+            setTimeout(() => {
+                fetchGeminiResponse();
+                // 制限を回避するため、ゆったり40秒間隔
+                setInterval(fetchGeminiResponse, 40000);
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${type === "error" ? "error-msg" : ""}`;
             msgDiv.innerHTML = `<div class="user-name">✦ ${name}</div><div class="text">${text}</div>`;
