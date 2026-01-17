@@ -54,6 +54,7 @@
             padding: 4px 8px; margin-bottom: 4px;
             flex-shrink: 0;
             animation: yt-slide 0.2s ease-out;
+            transition: all 0.3s ease;
         }
 
         .yt-avatar {
@@ -69,6 +70,20 @@
 
         @keyframes yt-slide {
             from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-window">
+        <div id="start-overlay">
+            <button class="start-btn">チャット開始</button>
+        </div>
+        <div id="chat-flow"></div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
             to { opacity: 1; transform: translateY(0); }
         }
     </style>
