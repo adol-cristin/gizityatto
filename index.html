@@ -1,39 +1,85 @@
-<style>
-    /* ... 既存のスタイル ... */
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Companion</title>
+    <style>
+        :root {
+            --yt-bg: rgba(15, 15, 15, 0.9);
+            --yt-name: #aaaaaa;
+            --yt-text: #ffffff;
+        }
+        body { 
+            background-color: #111;
+            margin: 0; padding: 0;
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; overflow: hidden; font-family: sans-serif;
+        }
+        
+        #chat-window {
+            width: 300px;
+            height: 400px;
+            background: #000;
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            overflow: hidden;
+            /* 上部をフェードアウトさせる */
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%);
+            mask-image: linear-gradient(to bottom, transparent 0%, black 15%);
+        }
 
-    #chat-window {
-        width: 300px;
-        height: 400px;
-        background: #000;
-        border: 1px solid #333;
-        display: flex;
-        flex-direction: column;
-        position: relative;
-        overflow: hidden;
-        /* 上部にフェードアウト効果をつける（オプション） */
-        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%);
-        mask-image: linear-gradient(to bottom, transparent 0%, black 15%);
-    }
+        #start-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 10;
+            display: flex; justify-content: center; align-items: center; cursor: pointer;
+        }
+        .start-btn { padding: 10px 20px; background: #cc0000; color: white; border: none; font-weight: bold; pointer-events: none; }
 
-    #chat-flow {
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-end; /* 常に下側に寄せる */
-        min-height: 100%; /* 最低でも親要素と同じ高さを持つ */
-        padding: 10px;
-        box-sizing: border-box;
-        transition: all 0.3s ease;
-    }
+        #chat-flow {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end; /* 下に寄せる */
+            min-height: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+        }
 
-    .yt-message {
-        display: flex;
-        align-items: flex-start;
-        padding: 4px 8px;
-        margin-bottom: 4px;
-        flex-shrink: 0; /* メッセージが潰れないようにする */
-        animation: yt-slide 0.2s ease-out;
-    }
+        .yt-message {
+            display: flex; align-items: flex-start;
+            padding: 4px 8px; margin-bottom: 4px;
+            flex-shrink: 0;
+            animation: yt-slide 0.2s ease-out;
+        }
 
-    /* ... animation 等はそのまま ... */
-</style>
+        .yt-avatar {
+            width: 24px; height: 24px; border-radius: 50%;
+            margin-right: 10px; flex-shrink: 0;
+            background: linear-gradient(45deg, #bf953f, #fcf6ba);
+        }
+        .user-avatar { background: #555 !important; }
+
+        .yt-content { display: flex; flex-direction: column; }
+        .yt-name { color: var(--yt-name); font-size: 12px; font-weight: bold; }
+        .yt-text { color: var(--yt-text); font-size: 13px; line-height: 1.4; word-break: break-all; }
+
+        @keyframes yt-slide {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-window">
+        <div id="start-overlay">
+            <button class="start-btn">チャット開始</button>
+        </div>
+        <div id="chat-flow"></div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
