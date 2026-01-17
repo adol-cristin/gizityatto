@@ -1,9 +1,39 @@
-<body>
-    <div id="chat-window">
-        <div id="start-overlay">
-            <button class="start-btn" id="start-button">チャット開始</button>
-        </div>
-        <div id="chat-flow"></div>
-    </div>
-    <script src="script.js"></script>
-</body>
+<style>
+    /* ... 既存のスタイル ... */
+
+    #chat-window {
+        width: 300px;
+        height: 400px;
+        background: #000;
+        border: 1px solid #333;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+        /* 上部にフェードアウト効果をつける（オプション） */
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%);
+        mask-image: linear-gradient(to bottom, transparent 0%, black 15%);
+    }
+
+    #chat-flow {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end; /* 常に下側に寄せる */
+        min-height: 100%; /* 最低でも親要素と同じ高さを持つ */
+        padding: 10px;
+        box-sizing: border-box;
+        transition: all 0.3s ease;
+    }
+
+    .yt-message {
+        display: flex;
+        align-items: flex-start;
+        padding: 4px 8px;
+        margin-bottom: 4px;
+        flex-shrink: 0; /* メッセージが潰れないようにする */
+        animation: yt-slide 0.2s ease-out;
+    }
+
+    /* ... animation 等はそのまま ... */
+</style>
