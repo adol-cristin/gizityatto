@@ -1,10 +1,45 @@
-// 1. 辞書データ (変更なし)
+// 1. 拡張版辞書データ
 const dictionaryData = {
-    "climax": { "keywords": ["ここで決める", "ここだ", "今だ", "チャンス"], "responses": ["いけえええ！", "最高のタイミング！", "叩き込め！"] },
-    "starting": { "keywords": ["さあ行こう", "始めて行きますか", "行こうか"], "responses": ["よし、気合入れていこうぜ！", "いよいよだね！"] },
-    "trouble": { "keywords": ["どうしよう", "うーん", "あれ", "わからん"], "responses": ["落ち着いて、ゆっくりいこう！", "大丈夫、君なら解決できる。"] },
-    "panic": { "keywords": ["やばい"], "responses": ["落ち着いて！深呼吸だ！", "ここを凌げばこっちのターンだ！"] },
-    "research": { "keywords": ["サーチ", "リサーチ", "索敵"], "responses": ["了解。スキャンを開始します。", "解析データを展開するよ。"] }
+    "climax": {
+        "keywords": ["ここで決める", "ここだ", "これで決める", "行くぜ", "今だ", "チャンス"],
+        "responses": ["いけえええ！その一撃にすべてを込めろ！", "最高のタイミング！畳み掛けろ！", "君なら絶対に外さない！叩き込め！"]
+    },
+    "starting": {
+        "keywords": ["さあ行こう", "行きますか", "始めて行きますか", "さて", "行こう", "よし", "これで行く", "さてさて"],
+        "responses": ["よし、気合入れていこうぜ！", "準備は万端だね。最高のプレイを期待してるよ！", "いよいよだね！派手に暴れてこよう！"]
+    },
+    "trying": {
+        "keywords": ["まあとりあえずこれでやってみるか", "まあやってみよう", "まいっか", "まあそんなことはさておき"],
+        "responses": ["まずはやってみるのが一番だね！", "その切り替えの早さ、大事だね！次いこう次！", "ナイスチャレンジ！何かが掴めるはずだよ。"]
+    },
+    "relief": {
+        "keywords": ["ふう", "倒した", "いい感じだ", "大丈夫", "まあ", "ふふふ", "まあ大丈夫でしょ", "よっしゃ"],
+        "responses": ["お疲れ様！いい流れが来てるね。", "その調子！今のプレイ、安定感あったよ。", "ナイス撃破！完全に圧倒してるね！"]
+    },
+    "trouble": {
+        "keywords": [
+            "どうしたものか", "どうしよ", "どうしようかな", "疲れた", "ふう疲れた", 
+            "どうしたものかな", "どうしようか", "うーん", "あれ", "あれれ", "あらら",
+            "全然わからん", "全くわからん", "どういうこと", "いかほどか"
+        ],
+        "responses": ["落ち着いて、まだ挽回できるよ！", "一旦状況を整理してみようか。", "うーん、どうくるかな…？慎重に見極めよう。"]
+    },
+    "panic": {
+        "keywords": [
+            "やばいやばいやばいやばいやばいやばいやばい", "やばいやばいやばいやばいやばい", 
+            "やばいやばいやばいやばい", "やばいやばい", "やばい"
+        ],
+        "responses": ["落ち着いて！深呼吸だ！", "ピンチはチャンス！まだ諦めるな！", "ここを凌げばこっちのターンだ！踏ん張れ！"]
+    },
+    "research": {
+        "keywords": [
+            "サーチしてくれ", "ジャービス 敵をロックしてくれ", "ロックオン サーチ", "ロックオン", 
+            "敵を観測してくれ", "敵をリサーチしてくれ", "ジャービス 敵をリサーチしてくれ", 
+            "ジャービス 敵を観測してくれ", "リサーチ機能", "リサーチ機能 オン", "リサーチ オン", 
+            "サーチ", "サーチ機能 オン", "サーチ機能オンにしてくれ", "索敵 してくれ"
+        ],
+        "responses": ["了解。リサーチを開始します。", "ターゲット確認。解析データを展開するよ。", "スキャン完了。周囲の情報を同期するね。"]
+    }
 };
 
 const names = ["♛ Empress Luna", "✦ Golden Duke", "✧ Madam Diamond"];
@@ -27,16 +62,17 @@ function postMessage(name, text, type = "ai") {
     `;
 
     chatFlow.appendChild(msgDiv);
-    // スムーズなスクロール
-    chatFlow.parentElement.scrollTo({ top: chatFlow.scrollHeight, behavior: 'smooth' });
+    // 親要素である chat-window をスクロールさせる
+    const chatWindow = document.getElementById('chat-window');
+    chatWindow.scrollTo({ top: chatWindow.scrollHeight, behavior: 'smooth' });
 }
 
 // 3. 音声認識の本体
 let recognition;
-let isStarted = false; // 二重起動防止
+let isStarted = false;
 
 window.initCompanion = function() {
-    if (isStarted) return; 
+    if (isStarted) return;
     isStarted = true;
 
     const overlay = document.getElementById('start-overlay');
@@ -44,7 +80,7 @@ window.initCompanion = function() {
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-        alert("お使いのブラウザは音声認識に対応していません。PCのChromeかSafariをお試しください。");
+        alert("音声認識未対応です。Chromeでお試しください。");
         return;
     }
 
@@ -53,11 +89,11 @@ window.initCompanion = function() {
     recognition.continuous = true;
     recognition.interimResults = false;
 
-    // 音声を認識した時
     recognition.onresult = (event) => {
         const transcript = event.results[event.results.length - 1][0].transcript.trim();
         postMessage("YOU", transcript, "user");
 
+        let found = false;
         for (let key in dictionaryData) {
             if (dictionaryData[key].keywords.some(kw => transcript.includes(kw))) {
                 const resList = dictionaryData[key].responses;
@@ -67,9 +103,28 @@ window.initCompanion = function() {
                     const charName = names[Math.floor(Math.random() * names.length)];
                     postMessage(charName, reply, "ai");
                 }, 600);
+                found = true;
                 break;
             }
         }
+        // 辞書にない言葉でも「YOU」として表示はされるので安心してください
+    };
+
+    recognition.onerror = (event) => {
+        console.error("Recognition error:", event.error);
+    };
+
+    recognition.onend = () => {
+        if (isStarted) recognition.start();
+    };
+
+    try {
+        recognition.start();
+        postMessage("SYSTEM", "音声エンジン始動。解析を開始します。", "ai");
+    } catch (e) {
+        console.error(e);
+    }
+};
     };
 
     // 重要：エラーハンドリング（これが無いと止まったままになります）
